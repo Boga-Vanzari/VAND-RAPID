@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ro">
 <head>
@@ -6,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#153b35">
 <title>Vând Rapid</title>
+
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#f1f4f2;color:#18332b;font-family:Arial}
@@ -26,7 +26,6 @@ button{border:0;border-radius:9px;padding:12px;font-size:14px;font-weight:bold}
 .galleryItem img{width:100%;height:140px;object-fit:cover;border-radius:9px}
 .galleryItem button{position:absolute;right:5px;top:5px;background:#c0392b;color:white}
 .product{border-bottom:1px solid #ddd;padding:14px 0}
-.product img{width:100%;height:180px;object-fit:contain}
 .productPhotos{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .productPhotos img{width:100%;height:150px;object-fit:contain}
 .actions{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
@@ -34,23 +33,31 @@ button{border:0;border-radius:9px;padding:12px;font-size:14px;font-weight:bold}
 .actions .facebook{background:#1877f2}
 .actions .share{background:#153b35;grid-column:1/-1}
 .delete{background:#c0392b;color:white;width:100%;margin-top:10px}
-input[type=file]{display:none}
+input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+#status{font-size:14px;color:#1877f2}
 </style>
 </head>
+
 <body>
 <header>
 <h1>🛍️ VÂND RAPID</h1>
 <p>Produsele tale, gata de vânzare!</p>
 </header>
+
 <main>
 <section class="card">
 <h2>➕ Adaugă produs</h2>
 
 <label>Fotografii produs (maximum 10)</label>
-<label class="pick camera" for="cameraInput">📷 FĂ FOTOGRAFIE</label>
+
+<label class="pick camera" for="cameraInput">
+📷 FĂ FOTOGRAFIE
+</label>
 <input type="file" id="cameraInput" accept="image/*" capture="environment">
 
-<label class="pick galleryButton" for="galleryInput">🖼️ ALEGE DIN GALERIE</label>
+<label class="pick galleryButton" for="galleryInput">
+🖼️ ALEGE DIN GALERIE
+</label>
 <input type="file" id="galleryInput" accept="image/*" multiple>
 
 <p id="status">Poți adăuga fotografii din cameră sau galerie.</p>
@@ -76,188 +83,376 @@ input[type=file]{display:none}
 
 <script>
 let products=[];
+
 try{
 products=JSON.parse(localStorage.getItem("vandrapid_products")||"[]");
 if(!Array.isArray(products))products=[];
-}catch(e){products=[];}
+}catch(e){
+products=[];
+}
 
 let selectedPhotos=[];
+let processing=false;
+
 const gallery=document.getElementById("gallery");
 const status=document.getElementById("status");
 const cameraInput=document.getElementById("cameraInput");
 const galleryInput=document.getElementById("galleryInput");
 
-function convertPhoto(file){
+function readBlob(blob){
 return new Promise((resolve,reject)=>{
-if(!file.type.startsWith("image/")){
-reject(Error("Fișierul nu este o imagine."));
-return;
-}
 const reader=new FileReader();
-reader.onerror=()=>reject(Error("Eroare la citirea fotografiei."));
-reader.onload=()=>{
-const img=new Image();
-img.onerror=()=>reject(Error("Fotografia nu poate fi deschisă."));
-img.onload=()=>{
-try{
-const canvas=document.createElement("canvas");
-const max=1000;
-const scale=Math.min(1,max/Math.max(img.width,img.height));
-canvas.width=Math.round(img.width*scale);
-canvas.height=Math.round(img.height*scale);
-const ctx=canvas.getContext("2d");
-ctx.fillStyle="#fff";
-ctx.fillRect(0,0,canvas.width,canvas.height);
-ctx.drawImage(img,0,0,canvas.width,canvas.height);
-resolve(canvas.toDataURL("image/jpeg",0.70));
-}catch(e){reject(e);}
-};
-img.src=reader.result;
-};
-reader.readAsDataURL(file);
+
+reader.onload=()=>resolve(reader.result);
+reader.onerror=()=>reject(Error("Nu pot citi fotografia."));
+
+reader.readAsDataURL(blob);
 });
+
 }
 
+// Conversie fotografii pentru compatibilitate Android
+async function convertPhoto(file){
+
+if(!file.type.startsWith("image/")){
+throw Error("Fișierul selectat nu este o fotografie.");
+}
+
+let bitmap=null;
+let img=null;
+
+try{
+
+if("createImageBitmap" in window){
+bitmap=await createImageBitmap(file);
+}
+
+}catch(e){
+bitmap=null;
+}
+
+let width,height,source;
+
+if(bitmap){
+width=bitmap.width;
+height=bitmap.height;
+source=bitmap;
+}else{
+
+const url=URL.createObjectURL(file);
+
+try{
+img=new Image();
+
+await new Promise((resolve,reject)=>{
+img.onload=resolve;
+img.onerror=()=>reject(Error("Telefonul nu poate deschide acest format de fotografie."));
+img.src=url;
+});
+
+width=img.naturalWidth;
+height=img.naturalHeight;
+source=img;
+
+}catch(e){
+URL.revokeObjectURL(url);
+throw e;
+}
+
+}
+
+if(!width||!height){
+throw Error("Fotografia nu are dimensiuni valide.");
+}
+
+const max=900;
+const scale=Math.min(1,max/Math.max(width,height));
+
+const canvas=document.createElement("canvas");
+
+canvas.width=Math.max(1,Math.round(width*scale));
+canvas.height=Math.max(1,Math.round(height*scale));
+
+const ctx=canvas.getContext("2d");
+
+if(!ctx){
+throw Error("Nu pot pregăti fotografia.");
+}
+
+ctx.fillStyle="#ffffff";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.drawImage(source,0,0,canvas.width,canvas.height);
+
+if(bitmap)bitmap.close();
+
+if(img){
+URL.revokeObjectURL(img.src);
+}
+
+const blob=await new Promise((resolve,reject)=>{
+canvas.toBlob(result=>{
+if(result)resolve(result);
+else reject(Error("Nu s-a putut comprima fotografia."));
+},"image/jpeg",0.65);
+});
+
+canvas.width=1;
+canvas.height=1;
+
+return await readBlob(blob);
+}
+
+// Afișarea fotografiilor selectate
 function showGallery(){
+
 gallery.innerHTML="";
+
 selectedPhotos.forEach((photo,index)=>{
+
 const box=document.createElement("div");
 box.className="galleryItem";
+
 const img=document.createElement("img");
 img.src=photo;
+img.alt="Fotografie produs";
+
 const del=document.createElement("button");
 del.textContent="✕";
+del.type="button";
+
 del.onclick=()=>{
 selectedPhotos.splice(index,1);
 showGallery();
 status.textContent=selectedPhotos.length+" fotografii selectate.";
 };
+
 box.append(img,del);
 gallery.append(box);
+
 });
+
 }
 
+// Selectarea fotografiilor
 async function addFiles(files){
+
+if(processing)return;
+
+const chosen=Array.from(files);
+
+if(!chosen.length)return;
+
 const remaining=10-selectedPhotos.length;
+
 if(remaining<=0){
 alert("Ai deja 10 fotografii!");
 return;
 }
-if(files.length>remaining){
-alert("Mai poți adăuga doar "+remaining+" fotografii.");
+
+if(chosen.length>remaining){
+alert("Poți adăuga doar încă "+remaining+" fotografii.");
 }
-const chosen=Array.from(files).slice(0,remaining);
+
+const accepted=chosen.slice(0,remaining);
+
+processing=true;
 cameraInput.disabled=true;
 galleryInput.disabled=true;
-for(let i=0;i<chosen.length;i++){
-status.textContent="Se pregătește fotografia "+(i+1)+"...";
+
+let successful=0;
+let failed=0;
+
 try{
-const photo=await convertPhoto(chosen[i]);
+
+for(let i=0;i<accepted.length;i++){
+
+status.textContent="Se încarcă fotografia "+(i+1)+" din "+accepted.length+"...";
+
+try{
+
+const photo=await convertPhoto(accepted[i]);
+
 selectedPhotos.push(photo);
+successful++;
+
 showGallery();
+
 }catch(e){
+
+failed++;
 status.textContent=e.message;
+
 }
+
 }
+
+}finally{
+
+processing=false;
 cameraInput.disabled=false;
 galleryInput.disabled=false;
-status.textContent=selectedPhotos.length+" fotografii pregătite ✓";
+
+}
+
+if(successful>0 && failed===0){
+status.textContent="✓ "+selectedPhotos.length+" fotografii încărcate cu succes!";
+}else if(successful>0){
+status.textContent="✓ "+successful+" fotografii încărcate. "+failed+" nu au putut fi citite.";
+}else{
+status.textContent="Nu s-au putut încărca fotografiile. Încearcă JPG sau PNG.";
+}
+
 }
 
 cameraInput.addEventListener("change",async()=>{
-if(cameraInput.files.length)await addFiles(cameraInput.files);
+const files=cameraInput.files;
+await addFiles(files);
 cameraInput.value="";
 });
 
 galleryInput.addEventListener("change",async()=>{
-if(galleryInput.files.length)await addFiles(galleryInput.files);
+const files=galleryInput.files;
+await addFiles(files);
 galleryInput.value="";
 });
 
+// Salvarea produselor
 document.getElementById("save").onclick=()=>{
+
 const name=document.getElementById("name").value.trim();
 const price=document.getElementById("price").value.trim();
 const description=document.getElementById("description").value.trim();
+
+if(processing){
+alert("Așteaptă să se termine încărcarea fotografiilor!");
+return;
+}
 
 if(!name||!price){
 alert("Completează denumirea și prețul!");
 return;
 }
+
 if(!selectedPhotos.length){
 alert("Adaugă cel puțin o fotografie!");
 return;
 }
 
-const product={name,price,description,photos:[...selectedPhotos]};
+const product={
+id:Date.now(),
+name,
+price,
+description,
+photos:[...selectedPhotos]
+};
+
 const updated=[product,...products];
 
 try{
+
 localStorage.setItem("vandrapid_products",JSON.stringify(updated));
+
 products=updated;
+
 }catch(e){
-alert("Spațiu insuficient. Încearcă mai puține fotografii.");
+
+alert("Memoria aplicației este insuficientă. Încearcă să folosești mai puține fotografii.");
 return;
+
 }
 
 document.getElementById("name").value="";
 document.getElementById("price").value="";
 document.getElementById("description").value="";
+
 selectedPhotos=[];
+
 showGallery();
+
 status.textContent="Poți adăuga alte fotografii.";
+
 showProducts();
-alert("Produs salvat!");
+
+alert("Produs salvat cu succes!");
+
 };
 
-// Transformă fotografia JPG salvată în fișier pentru Android
+// Pregătirea fotografiilor pentru distribuire
 function photoToFile(data,index){
+
 const parts=data.split(",");
 const mime=parts[0].match(/:(.*?);/)[1];
+
 const binary=atob(parts[1]);
 const bytes=new Uint8Array(binary.length);
+
 for(let i=0;i<binary.length;i++){
 bytes[i]=binary.charCodeAt(i);
 }
-return new File([bytes],"vandrapid-"+(index+1)+".jpg",{type:mime});
+
+return new File(
+[bytes],
+"vandrapid-"+(index+1)+".jpg",
+{type:mime}
+);
+
 }
 
-// Distribuire cu fotografii prin meniul Android
+// Distribuire Android
 async function shareProduct(p){
+
 const photos=p.photos||(p.photo?[p.photo]:[]);
+
 const text=p.name+"\nPreț: "+p.price+" lei\n"+(p.description||"");
 
 try{
+
 const files=photos.map((photo,index)=>photoToFile(photo,index));
 
 if(navigator.share && navigator.canShare && files.length){
-const data={title:p.name,text:text,files:files};
+
+const data={
+title:p.name,
+text:text,
+files:files
+};
 
 if(navigator.canShare({files:files})){
 await navigator.share(data);
 return;
 }
+
 }
 
 if(navigator.share){
-await navigator.share({title:p.name,text:text});
+await navigator.share({
+title:p.name,
+text:text
+});
 return;
 }
 
 if(navigator.clipboard){
 await navigator.clipboard.writeText(text);
-alert("Descrierea a fost copiată. Alege manual fotografiile.");
+alert("Anunțul a fost copiat.");
 return;
 }
 
 alert("Telefonul nu acceptă distribuirea automată.");
+
 }catch(e){
+
 if(e.name!=="AbortError"){
 alert("Distribuirea nu a reușit. Încearcă din nou.");
 }
-}
+
 }
 
+}
+
+// Afișarea produselor
 function showProducts(){
+
 const area=document.getElementById("products");
 area.innerHTML="";
 
@@ -267,6 +462,7 @@ return;
 }
 
 products.forEach((p,i)=>{
+
 const div=document.createElement("div");
 div.className="product";
 
@@ -282,15 +478,20 @@ desc.textContent=p.description||"";
 div.append(title,price,desc);
 
 const photos=p.photos||(p.photo?[p.photo]:[]);
+
 const photoBox=document.createElement("div");
 photoBox.className="productPhotos";
 
 photos.forEach(src=>{
+
 const img=document.createElement("img");
 img.src=src;
 img.alt=p.name;
+
 photoBox.append(img);
+
 });
+
 div.append(photoBox);
 
 const actions=document.createElement("div");
@@ -298,6 +499,7 @@ actions.className="actions";
 
 const wa=document.createElement("button");
 wa.textContent="WhatsApp";
+
 wa.onclick=()=>{
 const text=p.name+" - "+p.price+" lei\n"+(p.description||"");
 window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank");
@@ -306,6 +508,7 @@ window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank");
 const fb=document.createElement("button");
 fb.className="facebook";
 fb.textContent="Facebook";
+
 fb.onclick=()=>{
 window.open("https://www.facebook.com/sharer/sharer.php?u="+encodeURIComponent(location.href),"_blank");
 };
@@ -320,20 +523,35 @@ actions.append(wa,fb,share);
 const del=document.createElement("button");
 del.className="delete";
 del.textContent="ȘTERGE PRODUSUL";
+
 del.onclick=()=>{
+
 if(confirm("Ștergi produsul?")){
-products.splice(i,1);
-localStorage.setItem("vandrapid_products",JSON.stringify(products));
+
+const updated=[...products];
+updated.splice(i,1);
+
+try{
+localStorage.setItem("vandrapid_products",JSON.stringify(updated));
+products=updated;
 showProducts();
+}catch(e){
+alert("Nu am putut actualiza lista.");
 }
+
+}
+
 };
 
 div.append(actions,del);
 area.append(div);
+
 });
+
 }
 
 showProducts();
+
 </script>
 </body>
 </html>
