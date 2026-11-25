@@ -1,0 +1,11 @@
+{
+  "name": "Vând Rapid",
+  "short_name": "Vând Rapid",
+  "description": "Catalog personal pentru vânzări second-hand",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f6f8f6",
+  "theme_color": "#153b35",
+  "lang": "ro",
+  "icons": []
+}
