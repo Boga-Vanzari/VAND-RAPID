@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#153b35">
+<meta name="description" content="Vând Rapid - catalog personal pentru vânzări second-hand">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Vând Rapid</title>
+<style>
+:root{--green:#153b35;--mint:#e9f5ef;--ink:#172522;--muted:#66736f;--line:#dce6e1;--paper:#f6f8f6;--white:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px system-ui,-apple-system,Segoe UI,sans-serif}
+header{background:var(--green);color:white;padding:22px 18px 18px;border-radius:0 0 24px 24px}
+header .top{display:flex;align-items:center;gap:12px}header .logo{width:46px;height:46px;border-radius:14px;background:#d6f0df;color:var(--green);display:grid;place-items:center;font-size:25px}
+h1{font-size:23px;margin:0}header p{margin:7px 0 0;color:#d7e8e2;font-size:13px}
+main{max-width:720px;margin:auto;padding:16px 14px 90px}
+.tabs{display:flex;gap:8px;margin:0 0 14px}.tabs button{flex:1}
+button,.btn{border:0;border-radius:12px;padding:12px 14px;font-weight:700;font-size:14px;cursor:pointer;background:var(--green);color:white}
+button.secondary{background:var(--mint);color:var(--green)}button.ghost{background:white;color:var(--green);border:1px solid var(--line)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.panel{background:white;border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 3px 14px #163b3509}
+h2{font-size:17px;margin:0 0 14px}label{display:block;font-size:13px;font-weight:700;margin:12px 0 6px}
+input,textarea,select{width:100%;border:1px solid #ccd9d3;border-radius:11px;padding:12px;font:inherit;background:white;color:var(--ink)}
+textarea{min-height:94px;resize:vertical}.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
+.photo{display:flex;gap:12px;align-items:center}.photo img{width:86px;height:86px;object-fit:cover;border-radius:12px;background:var(--mint)}
+.muted{color:var(--muted);font-size:12px}.preview{white-space:pre-wrap;background:#f4f8f5;border-radius:12px;padding:13px;font-size:14px;line-height:1.45}
+.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.actions button{padding:12px 5px;font-size:12px}
+.list{display:grid;gap:10px}.item{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:13px;padding:10px}
+.item img{width:64px;height:64px;object-fit:cover;border-radius:10px;background:var(--mint)}.item .info{flex:1;min-width:0}.item strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.item small{color:var(--muted)}
+.pill{display:inline-block;border-radius:99px;padding:4px 8px;background:var(--mint);color:var(--green);font-size:11px;font-weight:700}
+.hidden{display:none!important}.empty{text-align:center;color:var(--muted);padding:22px}
+footer{text-align:center;color:var(--muted);font-size:11px;padding:12px}
+</style>
+</head>
+<body>
+<header><div class="top"><div class="logo">🛍️</div><div><h1>Vând Rapid</h1><p>Lucrurile nefolosite merită o nouă casă.</p></div></div></header>
+<main>
+<div class="tabs">
+<button id="tabNew">＋ Adaugă produs</button>
+<button class="secondary" id="tabList">Produsele mele</button>
+</div>
+<section id="editor" class="panel">
+<h2 id="formTitle">Adaugă un produs</h2>
+<div class="photo">
+<img id="photoPreview" alt="Previzualizare produs" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100%25' height='100%25' fill='%23e9f5ef'/%3E%3Ctext x='50%25' y='55%25' text-anchor='middle' font-size='30'%3E📷%3C/text%3E%3C/svg%3E">
+<div style="flex:1"><label for="photo">Fotografie (poți folosi camera)</label><input id="photo" type="file" accept="image/*" capture="environment"><div class="muted">Fotografia rămâne salvată pe acest dispozitiv.</div></div>
+</div>
+<label for="name">Denumire produs *</label><input id="name" placeholder="Ex.: bormașină Bosch, masă, telefon">
+<div class="row"><div><label for="price">Preț (lei) *</label><input id="price" type="number" min="0" step="1" placeholder="100"></div><div><label for="condition">Stare</label><select id="condition"><option>Second-hand, stare bună</option><option>Second-hand, stare foarte bună</option><option>Cu urme de utilizare</option><option>Nou, nefolosit</option><option>Pentru piese / reparații</option></select></div></div>
+<label for="description">Descriere</label><textarea id="description" placeholder="Detalii, dimensiuni, defecte, accesorii..."></textarea>
+<div class="row" style="margin-top:14px"><button id="save">Salvează produsul</button><button class="ghost" id="clear">Golește</button></div>
+</section>
+<section id="sharePanel" class="panel hidden">
+<h2>Anunț pregătit pentru distribuire</h2>
+<div id="adText" class="preview"></div>
+<div class="row" style="margin-top:10px"><button class="secondary" id="copy">Copiază textul</button><button class="ghost" id="nativeShare">Distribuie…</button></div>
+<div class="actions" style="margin-top:12px">
+<button style="background:#1877f2" id="facebook">Facebook</button>
+<button style="background:#159b55" id="whatsapp">WhatsApp</button>
+<button style="background:#111" id="tiktok">TikTok</button>
+</div>
+<p class="muted">Facebook și TikTok pot cere să alegi fotografia și să lipești textul în aplicația lor. Publicarea automată depinde de aprobările și API-urile oficiale ale fiecărei platforme.</p>
+</section>
+<section id="catalog" class="panel hidden">
+<h2>Produsele mele <span id="count" class="pill">0 produse</span></h2>
+<div id="items" class="list"><div class="empty">Nu ai salvat încă produse.</div></div>
+</section>
+<footer>Datele se păstrează local pe acest telefon. Fă periodic o copie de siguranță.</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let products=JSON.parse(localStorage.getItem('vandrapid-products')||'[]');
+let photoData='', editingId=null, current=null;
+function persist(){localStorage.setItem('vandrapid-products',JSON.stringify(products));render()}
+function adFor(p){return `🔥 ${p.name}\n\n${p.description||'Produs second-hand.'}\n\nStare: ${p.condition}\nPreț: ${p.price} lei, negociabil.\n\n📦 Predare personală sau expediere prin curier.\n📩 Mesaj privat pentru detalii.`}
+function show(which){$('editor').classList.toggle('hidden',which!=='editor');$('catalog').classList.toggle('hidden',which!=='catalog');$('sharePanel').classList.toggle('hidden',!current||which!=='share');$('tabNew').className=which==='editor'?'':'secondary';$('tabList').className=which==='catalog'?'':'secondary'}
+function reset(){editingId=null;photoData='';$('formTitle').textContent='Adaugă un produs';$('name').value='';$('price').value='';$('description').value='';$('condition').selectedIndex=0;$('photo').value='';$('photoPreview').src='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect width="100%25" height="100%25" fill="%23e9f5ef"/%3E%3Ctext x="50%25" y="55%25" text-anchor="middle" font-size="30"%3E📷%3C/text%3E%3C/svg%3E'}
+function render(){ $('count').textContent=products.length+' produse';$('items').innerHTML='';if(!products.length){$('items').innerHTML='<div class="empty">Nu ai salvat încă produse.</div>';return}
+products.forEach(p=>{let el=document.createElement('div');el.className='item';let img=document.createElement('img');img.src=p.photo||'';img.alt='';let info=document.createElement('div');info.className='info';let strong=document.createElement('strong');strong.textContent=p.name;let small=document.createElement('small');small.textContent=p.price+' lei · '+(p.sold?'Vândut':'Disponibil');info.append(strong,small);let edit=document.createElement('button');edit.className='ghost';edit.textContent='Deschide';edit.onclick=()=>load(p.id);el.append(img,info,edit);$('items').append(el)})}
+function load(id){let p=products.find(x=>x.id===id);if(!p)return;editingId=id;current=p;photoData=p.photo||'';$('name').value=p.name;$('price').value=p.price;$('description').value=p.description;$('condition').value=p.condition;$('photoPreview').src=p.photo||$('photoPreview').src;$('formTitle').textContent='Editează produs';$('adText').textContent=adFor(p);show('editor');$('sharePanel').classList.remove('hidden')}
+$('photo').onchange=()=>{let f=$('photo').files[0];if(!f)return;let r=new FileReader();r.onload=()=>{photoData=r.result;$('photoPreview').src=photoData};r.readAsDataURL(f)};
+$('save').onclick=()=>{let name=$('name').value.trim(),price=Number($('price').value);if(!name||$('price').value===''||price<0){alert('Completează denumirea și un preț valid.');return}
+let p={id:editingId||Date.now().toString(),name,price,description:$('description').value.trim(),condition:$('condition').value,photo:photoData,sold:editingId?(products.find(x=>x.id===editingId)?.sold||false):false};let i=products.findIndex(x=>x.id===p.id);if(i>=0)products[i]=p;else products.unshift(p);current=p;persist();$('adText').textContent=adFor(p);show('share');};
+$('clear').onclick=reset;$('tabNew').onclick=()=>{reset();current=null;show('editor')};$('tabList').onclick=()=>show('catalog');
+$('copy').onclick=async()=>{await navigator.clipboard.writeText(adFor(current));alert('Anunț copiat.');};
+$('nativeShare').onclick=async()=>{let text=adFor(current);if(navigator.share){try{await navigator.share({title:current.name,text})}catch(e){}}else{await navigator.clipboard.writeText(text);alert('Text copiat.')}}; 
+$('facebook').onclick=async()=>{await navigator.clipboard.writeText(adFor(current));window.open('https://www.facebook.com/marketplace/create/item/','_blank');};
+$('whatsapp').onclick=()=>window.open('https://wa.me/?text='+encodeURIComponent(adFor(current)),'_blank');
+$('tiktok').onclick=async()=>{await navigator.clipboard.writeText(adFor(current));window.open('https://www.tiktok.com/upload','_blank');};
+render();show('editor');
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script>
+</body></html>
