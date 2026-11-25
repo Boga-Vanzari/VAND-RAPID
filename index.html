@@ -16,6 +16,278 @@ main{max-width:650px;margin:auto;padding:14px}
 label{display:block;font-weight:bold;margin:13px 0 6px}
 input,textarea{width:100%;padding:13px;border:1px solid #ccc;border-radius:9px;font-size:16px}
 textarea{min-height:80px}
+button{border:0;border-radius:9px;padding:13px;font-size:15px;font-weight:bold}
+.primary{background:#153b35;color:white;width:100%;margin-top:15px}
+.pick{display:block;text-align:center;padding:14px;border-radius:9px;color:white;font-weight:bold;margin:8px 0}
+.camera{background:#16834b}
+.galleryButton{background:#1877f2}
+.gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+.galleryItem{position:relative}
+.galleryItem img{width:100%;height:140px;object-fit:cover;border-radius:9px}
+.galleryItem button{position:absolute;right:5px;top:5px;background:#c0392b;color:white;padding:7px}
+.product{border-bottom:1px solid #ddd;padding:14px 0}
+.product img{width:100%;height:180px;object-fit:contain}
+.actions{display:flex;gap:8px;margin-top:10px}
+.actions button{flex:1;background:#16834b;color:white}
+.actions button:last-child{background:#1877f2}
+.delete{background:#c0392b;color:white;width:100%;margin-top:10px}
+input[type=file]{display:none}
+</style>
+</head>
+<body>
+<header>
+<h1>🛍️ VÂND RAPID</h1>
+<p>Produsele tale, gata de vânzare!</p>
+</header>
+<main>
+<section class="card">
+<h2>➕ Adaugă produs</h2>
+
+<label>Fotografii produs (maximum 10)</label>
+
+<label class="pick camera" for="cameraInput">📷 FĂ FOTOGRAFIE</label>
+<input type="file" id="cameraInput" accept="image/*" capture="environment">
+
+<label class="pick galleryButton" for="galleryInput">🖼️ ALEGE DIN GALERIE</label>
+<input type="file" id="galleryInput" accept="image/*" multiple>
+
+<p id="status">Poți adăuga fotografii din cameră sau galerie.</p>
+<div id="gallery" class="gallery"></div>
+
+<label>Denumire produs</label>
+<input id="name" placeholder="Ex: Telefon Samsung">
+
+<label>Preț (lei)</label>
+<input id="price" type="number" placeholder="Ex: 500">
+
+<label>Descriere</label>
+<textarea id="description" placeholder="Descrie produsul..."></textarea>
+
+<button class="primary" id="save">SALVEAZĂ PRODUSUL</button>
+</section>
+
+<section class="card">
+<h2>📦 Produsele mele</h2>
+<div id="products"></div>
+</section>
+</main>
+
+<script>
+let products=[];
+try{
+products=JSON.parse(localStorage.getItem("vandrapid_products")||"[]");
+}catch(e){products=[];}
+
+let selectedPhotos=[];
+const gallery=document.getElementById("gallery");
+const status=document.getElementById("status");
+const cameraInput=document.getElementById("cameraInput");
+const galleryInput=document.getElementById("galleryInput");
+
+function convertPhoto(file){
+return new Promise((resolve,reject)=>{
+if(!file.type.startsWith("image/")){
+reject(Error("Fișierul nu este o imagine."));
+return;
+}
+const reader=new FileReader();
+reader.onerror=()=>reject(Error("Eroare la citirea fotografiei."));
+reader.onload=()=>{
+const img=new Image();
+img.onerror=()=>reject(Error("Fotografia nu poate fi deschisă. Încearcă JPG."));
+img.onload=()=>{
+try{
+const canvas=document.createElement("canvas");
+const max=1000;
+const scale=Math.min(1,max/Math.max(img.width,img.height));
+canvas.width=Math.round(img.width*scale);
+canvas.height=Math.round(img.height*scale);
+const ctx=canvas.getContext("2d");
+ctx.fillStyle="#fff";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.drawImage(img,0,0,canvas.width,canvas.height);
+resolve(canvas.toDataURL("image/jpeg",0.70));
+}catch(e){reject(e);}
+};
+img.src=reader.result;
+};
+reader.readAsDataURL(file);
+});
+}
+
+function showGallery(){
+gallery.innerHTML="";
+selectedPhotos.forEach((photo,index)=>{
+const box=document.createElement("div");
+box.className="galleryItem";
+const img=document.createElement("img");
+img.src=photo;
+const del=document.createElement("button");
+del.textContent="✕";
+del.onclick=()=>{
+selectedPhotos.splice(index,1);
+showGallery();
+status.textContent=selectedPhotos.length+" fotografii selectate.";
+};
+box.append(img,del);
+gallery.append(box);
+});
+}
+
+async function addFiles(files){
+const remaining=10-selectedPhotos.length;
+if(remaining<=0){
+alert("Ai deja 10 fotografii!");
+return;
+}
+if(files.length>remaining){
+alert("Mai poți adăuga doar "+remaining+" fotografii.");
+}
+const chosen=Array.from(files).slice(0,remaining);
+cameraInput.disabled=true;
+galleryInput.disabled=true;
+let added=0;
+for(const file of chosen){
+status.textContent="Se pregătește fotografia "+(added+1)+"...";
+try{
+const photo=await convertPhoto(file);
+selectedPhotos.push(photo);
+added++;
+showGallery();
+}catch(e){
+status.textContent=e.message;
+}
+}
+cameraInput.disabled=false;
+galleryInput.disabled=false;
+status.textContent=selectedPhotos.length+" fotografii pregătite ✓";
+}
+
+cameraInput.addEventListener("change",async()=>{
+if(cameraInput.files.length){
+await addFiles(cameraInput.files);
+}
+cameraInput.value="";
+});
+
+galleryInput.addEventListener("change",async()=>{
+if(galleryInput.files.length){
+await addFiles(galleryInput.files);
+}
+galleryInput.value="";
+});
+
+document.getElementById("save").onclick=()=>{
+const name=document.getElementById("name").value.trim();
+const price=document.getElementById("price").value.trim();
+const description=document.getElementById("description").value.trim();
+
+if(!name||!price){
+alert("Completează denumirea și prețul!");
+return;
+}
+if(!selectedPhotos.length){
+alert("Adaugă cel puțin o fotografie!");
+return;
+}
+
+const product={name,price,description,photos:[...selectedPhotos]};
+const updated=[product,...products];
+try{
+localStorage.setItem("vandrapid_products",JSON.stringify(updated));
+products=updated;
+}catch(e){
+alert("Spațiu insuficient. Încearcă mai puține fotografii.");
+return;
+}
+
+document.getElementById("name").value="";
+document.getElementById("price").value="";
+document.getElementById("description").value="";
+selectedPhotos=[];
+showGallery();
+status.textContent="Poți adăuga alte fotografii.";
+showProducts();
+alert("Produs salvat!");
+};
+
+function showProducts(){
+const area=document.getElementById("products");
+area.innerHTML="";
+if(!products.length){
+area.textContent="Nu ai produse încă.";
+return;
+}
+products.forEach((p,i)=>{
+const div=document.createElement("div");
+div.className="product";
+const title=document.createElement("h3");
+title.textContent=p.name;
+const price=document.createElement("strong");
+price.textContent=p.price+" lei";
+const desc=document.createElement("p");
+desc.textContent=p.description||"";
+div.append(title,price,desc);
+
+const photos=p.photos||(p.photo?[p.photo]:[]);
+photos.forEach(src=>{
+const img=document.createElement("img");
+img.src=src;
+div.append(img);
+});
+
+const actions=document.createElement("div");
+actions.className="actions";
+const wa=document.createElement("button");
+wa.textContent="WhatsApp";
+wa.onclick=()=>window.open(
+"https://wa.me/?text="+encodeURIComponent(
+p.name+" - "+p.price+" lei\n"+p.description
+),"_blank");
+
+const fb=document.createElement("button");
+fb.textContent="Facebook";
+fb.onclick=()=>window.open(
+"https://www.facebook.com/sharer/sharer.php?u="+
+encodeURIComponent(location.href),"_blank");
+
+actions.append(wa,fb);
+const del=document.createElement("button");
+del.className="delete";
+del.textContent="ȘTERGE PRODUSUL";
+del.onclick=()=>{
+if(confirm("Ștergi produsul?")){
+products.splice(i,1);
+localStorage.setItem("vandrapid_products",JSON.stringify(products));
+showProducts();
+}
+};
+div.append(actions,del);
+area.append(div);
+});
+}
+showProducts();
+</script>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#153b35">
+<title>Vând Rapid</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f1f4f2;color:#18332b;font-family:Arial}
+header{background:#153b35;color:white;text-align:center;padding:20px}
+header h1{margin:0}
+main{max-width:650px;margin:auto;padding:14px}
+.card{background:white;padding:16px;border-radius:14px;margin-bottom:15px}
+label{display:block;font-weight:bold;margin:13px 0 6px}
+input,textarea{width:100%;padding:13px;border:1px solid #ccc;border-radius:9px;font-size:16px}
+textarea{min-height:80px}
 button{border:0;border-radius:9px;padding:12px;font-size:15px;font-weight:bold}
 .primary{background:#153b35;color:white;width:100%;margin-top:15px}
 .gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
