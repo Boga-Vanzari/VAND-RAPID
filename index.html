@@ -8,25 +8,23 @@
 <title>Vând Rapid</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#f1f4f2;color:#172b25}
-header{background:#153b35;color:white;padding:20px;text-align:center}
-header h1{margin:0;font-size:27px}
-header p{margin:6px 0 0}
-main{padding:15px;max-width:650px;margin:auto}
-.card{background:white;padding:16px;border-radius:14px;margin-bottom:15px;box-shadow:0 2px 8px #0001}
-label{display:block;font-weight:bold;margin:12px 0 6px}
+body{margin:0;background:#f1f4f2;color:#18332b;font-family:Arial}
+header{background:#153b35;color:white;text-align:center;padding:20px}
+header h1{margin:0}
+main{max-width:650px;margin:auto;padding:15px}
+.card{background:white;padding:16px;border-radius:14px;margin-bottom:15px}
+label{display:block;font-weight:bold;margin:13px 0 6px}
 input,textarea{width:100%;padding:13px;border:1px solid #ccc;border-radius:9px;font-size:16px}
 textarea{min-height:80px}
-button{border:0;border-radius:9px;padding:13px;font-size:16px;font-weight:bold;cursor:pointer}
+button{border:0;border-radius:9px;padding:13px;font-size:16px;font-weight:bold}
 .primary{background:#153b35;color:white;width:100%;margin-top:15px}
-.photo{width:100%;max-height:280px;object-fit:contain;border-radius:10px;margin-top:12px}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-.actions button{color:white;background:#16834b}
+.photo{width:100%;max-height:260px;object-fit:contain;margin-top:12px}
+.product{border-bottom:1px solid #ddd;padding:15px 0}
+.product img{width:100%;max-height:240px;object-fit:contain}
+.actions{display:flex;gap:8px;margin-top:12px}
+.actions button{flex:1;background:#16834b;color:white}
 .actions button:last-child{background:#1877f2}
-.product{border-bottom:1px solid #ddd;padding:12px 0}
-.product h3{margin:5px 0}
-.product img{width:100%;max-height:220px;object-fit:contain}
-.delete{background:#c0392b;color:white;margin-top:8px}
+.delete{background:#c0392b;color:white;margin-top:10px;width:100%}
 </style>
 </head>
 <body>
@@ -37,16 +35,21 @@ button{border:0;border-radius:9px;padding:13px;font-size:16px;font-weight:bold;c
 <main>
 <section class="card">
 <h2>➕ Adaugă produs</h2>
-<label>Fotografie</label>
-<input type="file" id="photo" accept="image/*" capture="environment">
+<label>Fotografie produs</label>
+<input type="file" id="photo" accept="image/*">
 <img id="preview" class="photo" hidden>
+<p id="photoStatus"></p>
+
 <label>Denumire produs</label>
 <input id="name" placeholder="Ex: Telefon Samsung">
+
 <label>Preț (lei)</label>
 <input id="price" type="number" placeholder="Ex: 500">
+
 <label>Descriere</label>
-<textarea id="description" placeholder="Descrie produsul..."></textarea>
-<button class="primary" onclick="addProduct()">SALVEAZĂ PRODUSUL</button>
+<textarea id="description" placeholder="Descriere produs..."></textarea>
+
+<button class="primary" id="save">SALVEAZĂ PRODUSUL</button>
 </section>
 
 <section class="card">
@@ -54,106 +57,157 @@ button{border:0;border-radius:9px;padding:13px;font-size:16px;font-weight:bold;c
 <div id="products"></div>
 </section>
 </main>
+
 <script>
-let products=JSON.parse(localStorage.getItem("vandrapid_products")||"[]");
+let products=[];
+try{
+products=JSON.parse(localStorage.getItem("vandrapid_products")||"[]");
+}catch(e){products=[];}
+
 let selectedPhoto="";
 
-document.getElementById("photo").addEventListener("change",function(){
- const file=this.files[0];
- if(!file)return;
- const reader=new FileReader();
- reader.onload=function(e){
- selectedPhoto=e.target.result;
- const img=document.getElementById("preview");
- img.src=selectedPhoto;
- img.hidden=false;
- };
- reader.readAsDataURL(file);
+const photoInput=document.getElementById("photo");
+const preview=document.getElementById("preview");
+const status=document.getElementById("photoStatus");
+const saveButton=document.getElementById("save");
+
+function convertToJpg(file){
+return new Promise((resolve,reject)=>{
+if(!file.type.startsWith("image/")){
+reject(new Error("Fișierul nu este o fotografie."));
+return;
+}
+const reader=new FileReader();
+reader.onerror=()=>reject(new Error("Nu pot citi fotografia."));
+reader.onload=()=>{
+const img=new Image();
+img.onerror=()=>reject(new Error("Fotografia nu poate fi deschisă."));
+img.onload=()=>{
+try{
+const canvas=document.createElement("canvas");
+const max=1100;
+const scale=Math.min(1,max/Math.max(img.width,img.height));
+canvas.width=Math.round(img.width*scale);
+canvas.height=Math.round(img.height*scale);
+const ctx=canvas.getContext("2d");
+ctx.fillStyle="#ffffff";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.drawImage(img,0,0,canvas.width,canvas.height);
+resolve(canvas.toDataURL("image/jpeg",0.75));
+}catch(e){reject(e);}
+};
+img.src=reader.result;
+};
+reader.readAsDataURL(file);
+});
+}
+
+photoInput.addEventListener("change",async()=>{
+const file=photoInput.files[0];
+if(!file)return;
+selectedPhoto="";
+preview.hidden=true;
+status.textContent="Se pregătește fotografia...";
+try{
+selectedPhoto=await convertToJpg(file);
+preview.src=selectedPhoto;
+preview.hidden=false;
+status.textContent="Fotografie pregătită! ✓";
+}catch(e){
+status.textContent="Eroare: "+e.message;
+}
 });
 
-function addProduct(){
- const name=document.getElementById("name").value.trim();
- const price=document.getElementById("price").value.trim();
- const description=document.getElementById("description").value.trim();
- if(!name||!price){
- alert("Completează denumirea și prețul!");
- return;
- }
- products.unshift({name,price,description,photo:selectedPhoto});
- try{
- localStorage.setItem("vandrapid_products",JSON.stringify(products));
- }catch(e){
- alert("Spațiul de stocare este plin. Încearcă o fotografie mai mică.");
- return;
- }
- document.getElementById("name").value="";
- document.getElementById("price").value="";
- document.getElementById("description").value="";
- document.getElementById("photo").value="";
- document.getElementById("preview").hidden=true;
- selectedPhoto="";
- showProducts();
- alert("Produs salvat!");
+saveButton.addEventListener("click",()=>{
+const name=document.getElementById("name").value.trim();
+const price=document.getElementById("price").value.trim();
+const description=document.getElementById("description").value.trim();
+
+if(!name||!price){
+alert("Completează denumirea și prețul!");
+return;
 }
+if(!selectedPhoto){
+alert("Selectează și așteaptă pregătirea fotografiei!");
+return;
+}
+
+const product={name,price,description,photo:selectedPhoto};
+
+try{
+localStorage.setItem("vandrapid_products",
+JSON.stringify([product,...products]));
+products.unshift(product);
+}catch(e){
+alert("Nu este suficient spațiu pentru salvare. Încearcă o fotografie mai mică.");
+return;
+}
+
+document.getElementById("name").value="";
+document.getElementById("price").value="";
+document.getElementById("description").value="";
+photoInput.value="";
+preview.hidden=true;
+selectedPhoto="";
+status.textContent="";
+showProducts();
+alert("Produs salvat cu succes!");
+});
 
 function showProducts(){
- const area=document.getElementById("products");
- area.innerHTML="";
- if(!products.length){
- area.innerHTML="<p>Nu ai produse încă.</p>";
- return;
- }
- products.forEach((p,i)=>{
- const div=document.createElement("div");
- div.className="product";
- const title=document.createElement("h3");
- title.textContent=p.name;
- const price=document.createElement("strong");
- price.textContent=p.price+" lei";
- const desc=document.createElement("p");
- desc.textContent=p.description||"";
- div.append(title,price,desc);
- if(p.photo){
- const img=document.createElement("img");
- img.src=p.photo;
- div.appendChild(img);
- }
- const actions=document.createElement("div");
- actions.className="actions";
- const whatsapp=document.createElement("button");
- whatsapp.textContent="WhatsApp";
- whatsapp.onclick=()=>shareWhatsApp(p);
- const facebook=document.createElement("button");
- facebook.textContent="Facebook";
- facebook.onclick=()=>shareFacebook(p);
- actions.append(whatsapp,facebook);
- const del=document.createElement("button");
- del.className="delete";
- del.textContent="ȘTERGE PRODUSUL";
- del.onclick=()=>deleteProduct(i);
- div.append(actions,del);
- area.appendChild(div);
- });
+const area=document.getElementById("products");
+area.innerHTML="";
+if(!products.length){
+area.textContent="Nu ai produse încă.";
+return;
+}
+products.forEach((p,i)=>{
+const div=document.createElement("div");
+div.className="product";
+const title=document.createElement("h3");
+title.textContent=p.name;
+const price=document.createElement("strong");
+price.textContent=p.price+" lei";
+const desc=document.createElement("p");
+desc.textContent=p.description||"";
+div.append(title,price,desc);
+
+if(p.photo){
+const img=document.createElement("img");
+img.src=p.photo;
+img.alt=p.name;
+div.append(img);
 }
 
-function shareText(p){
- return p.name+"\nPreț: "+p.price+" lei\n"+p.description;
+const actions=document.createElement("div");
+actions.className="actions";
+const wa=document.createElement("button");
+wa.textContent="WhatsApp";
+wa.onclick=()=>window.open(
+"https://wa.me/?text="+encodeURIComponent(
+p.name+" - "+p.price+" lei\n"+p.description
+),"_blank");
+
+const fb=document.createElement("button");
+fb.textContent="Facebook";
+fb.onclick=()=>window.open(
+"https://www.facebook.com/sharer/sharer.php?u="+
+encodeURIComponent(location.href),"_blank");
+
+actions.append(wa,fb);
+const del=document.createElement("button");
+del.className="delete";
+del.textContent="ȘTERGE PRODUSUL";
+del.onclick=()=>{
+if(confirm("Ștergi produsul?")){
+products.splice(i,1);
+localStorage.setItem("vandrapid_products",JSON.stringify(products));
+showProducts();
 }
-function shareWhatsApp(p){
- const text=encodeURIComponent(shareText(p));
- window.open("https://wa.me/?text="+text,"_blank");
-}
-function shareFacebook(p){
- const text=encodeURIComponent(shareText(p));
- const url="https://www.facebook.com/sharer/sharer.php?u="+encodeURIComponent(location.href);
- window.open(url,"_blank");
-}
-function deleteProduct(i){
- if(confirm("Ștergi acest produs?")){
- products.splice(i,1);
- localStorage.setItem("vandrapid_products",JSON.stringify(products));
- showProducts();
- }
+};
+div.append(actions,del);
+area.append(div);
+});
 }
 showProducts();
 </script>
