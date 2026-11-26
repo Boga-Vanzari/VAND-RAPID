@@ -22,10 +22,11 @@ textarea{min-height:92px;resize:vertical}
 button,.button{border:0;border-radius:10px;padding:12px 14px;font-size:14px;font-weight:700;cursor:pointer}
 .primary{background:var(--green);color:#fff}
 .secondary{background:#e8f0eb;color:var(--green)}
+.marketplace{background:#1877f2;color:#fff}
 .danger{background:#fff0f0;color:var(--red)}
 button:disabled{opacity:.5;cursor:not-allowed}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.actions button{flex:1}
+.actions button{flex:1;min-width:110px}
 .photo-tools{display:flex;gap:8px;margin-top:9px}
 .photo-tools label{flex:1;text-align:center;background:#e8f0eb;color:var(--green);padding:12px;border-radius:10px;margin:0;cursor:pointer}
 .photo-tools input{display:none}
@@ -53,269 +54,489 @@ footer{text-align:center;padding:12px 10px 24px;color:var(--muted);font-size:11p
 </head>
 <body>
 <header>
-  <h1>Vând Rapid</h1>
-  <p>Anunțurile tale, pregătite de distribuit</p>
+<h1>Vând Rapid</h1>
+<p>Anunțurile tale, pregătite de distribuit</p>
 </header>
-<main>
-  <section class="panel">
-    <h2 id="formTitle">Adaugă un anunț</h2>
-    <form id="adForm">
-      <label for="title">Titlul anunțului *</label>
-      <input id="title" maxlength="90" required placeholder="Ex.: Telefon Samsung în stare bună">
-      <label for="price">Preț (lei)</label>
-      <input id="price" inputmode="decimal" maxlength="20" placeholder="Ex.: 450">
-      <label for="description">Descriere</label>
-      <textarea id="description" maxlength="2000" placeholder="Detalii despre produs, stare, livrare..."></textarea>
-      <label>Fotografii (maximum 10)</label>
-      <div class="photo-tools">
-        <label for="galleryInput">🖼️ Alege din galerie</label>
-        <label for="cameraInput">📷 Fă o fotografie</label>
-        <input id="galleryInput" type="file" accept="image/*" multiple>
-        <input id="cameraInput" type="file" accept="image/*" capture="environment">
-      </div>
-      <p class="hint">Poți selecta mai multe fotografii din galerie sau poți face fotografii cu camera. Maximum 10 fotografii pentru fiecare anunț.</p>
-      <div id="preview"></div>
-      <div class="actions">
-        <button class="primary" id="saveBtn" type="submit">Publică anunțul</button>
-        <button class="secondary" id="cancelEdit" type="button" hidden>Anulează editarea</button>
-      </div>
-    </form>
-  </section>
 
-  <section class="panel">
-    <h2>Anunțurile mele</h2>
-    <div class="toolbar">
-      <input id="search" placeholder="Caută în anunțuri...">
-      <button class="secondary" id="clearSearch" type="button">Șterge</button>
-    </div>
-    <div id="list"></div>
-  </section>
+<main>
+<section class="panel">
+<h2 id="formTitle">Adaugă un anunț</h2>
+<form id="adForm">
+<label for="title">Titlul anunțului *</label>
+<input id="title" maxlength="90" required placeholder="Ex.: Telefon Samsung în stare bună">
+
+<label for="price">Preț (lei)</label>
+<input id="price" inputmode="decimal" maxlength="20" placeholder="Ex.: 450">
+
+<label for="description">Descriere</label>
+<textarea id="description" maxlength="2000" placeholder="Detalii despre produs, stare, livrare..."></textarea>
+
+<label>Fotografii (maximum 10)</label>
+<div class="photo-tools">
+<label for="galleryInput">🖼️ Alege din galerie</label>
+<label for="cameraInput">📷 Fă o fotografie</label>
+<input id="galleryInput" type="file" accept="image/*" multiple>
+<input id="cameraInput" type="file" accept="image/*" capture="environment">
+</div>
+<p class="hint">Poți selecta mai multe fotografii din galerie sau poți face fotografii cu camera. Maximum 10 fotografii pentru fiecare anunț.</p>
+<div id="preview"></div>
+
+<div class="actions">
+<button class="primary" id="saveBtn" type="submit">Publică anunțul</button>
+<button class="secondary" id="cancelEdit" type="button" hidden>Anulează editarea</button>
+</div>
+</form>
+</section>
+
+<section class="panel">
+<h2>Anunțurile mele</h2>
+<div class="toolbar">
+<input id="search" placeholder="Caută în anunțuri...">
+<button class="secondary" id="clearSearch" type="button">Șterge</button>
+</div>
+<div id="list"></div>
+</section>
 </main>
+
 <footer>Vând Rapid · Datele sunt salvate pe acest dispozitiv</footer>
+
 <script>
 (() => {
-  "use strict";
-  const STORAGE_KEY = "vandrapid_products";
-  const $ = id => document.getElementById(id);
-  const form = $("adForm");
-  const titleEl = $("title"), priceEl = $("price"), descEl = $("description");
-  const galleryInput = $("galleryInput"), cameraInput = $("cameraInput");
-  const preview = $("preview"), list = $("list");
-  let selectedPhotos = [];
-  let editingId = null;
-  let products = loadProducts();
+"use strict";
 
-  function loadProducts(){
-    try {
-      const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      return Array.isArray(value) ? value : [];
-    } catch(e) { return []; }
+const STORAGE_KEY = "vandrapid_products";
+
+const $ = id => document.getElementById(id);
+const form = $("adForm");
+const titleEl = $("title");
+const priceEl = $("price");
+const descEl = $("description");
+const galleryInput = $("galleryInput");
+const cameraInput = $("cameraInput");
+const preview = $("preview");
+const list = $("list");
+
+let selectedPhotos = [];
+let editingId = null;
+let products = loadProducts();
+
+function loadProducts(){
+  try{
+    const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    return Array.isArray(value) ? value : [];
+  }catch(e){
+    return [];
   }
-  function saveProducts(){
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-      return true;
-    } catch(e) {
-      alert("Spațiul de stocare este plin. Șterge câteva anunțuri sau fotografii și încearcă din nou.");
-      return false;
-    }
+}
+
+function saveProducts(){
+  try{
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(products));
+    return true;
+  }catch(e){
+    alert("Spațiul de stocare este plin. Șterge câteva anunțuri sau fotografii și încearcă din nou.");
+    return false;
   }
-  function makeId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
-  function escapeHtml(value){
-    return String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
-  }
-  function showPreview(){
-    preview.innerHTML = "";
-    selectedPhotos.forEach((src,index) => {
-      const item = document.createElement("div");
-      item.className = "preview-item";
-      const img = document.createElement("img");
-      img.src = src; img.alt = "Fotografie " + (index+1);
-      const remove = document.createElement("button");
-      remove.type = "button"; remove.textContent = "✕"; remove.setAttribute("aria-label","Șterge fotografia");
-      remove.addEventListener("click", () => { selectedPhotos.splice(index,1); showPreview(); });
-      item.append(img,remove); preview.append(item);
+}
+
+function makeId(){
+  return Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+}
+
+function showPreview(){
+  preview.innerHTML="";
+  selectedPhotos.forEach((src,index)=>{
+    const item=document.createElement("div");
+    item.className="preview-item";
+
+    const img=document.createElement("img");
+    img.src=src;
+    img.alt="Fotografie "+(index+1);
+
+    const remove=document.createElement("button");
+    remove.type="button";
+    remove.textContent="✕";
+    remove.setAttribute("aria-label","Șterge fotografia");
+
+    remove.addEventListener("click",()=>{
+      selectedPhotos.splice(index,1);
+      showPreview();
     });
-  }
-  function readImage(file){
-    return new Promise((resolve,reject) => {
-      if(!file.type.startsWith("image/")) return reject(new Error("Fișierul nu este o imagine."));
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error("Fotografia nu a putut fi citită."));
-      reader.onload = () => {
-        const image = new Image();
-        image.onerror = () => reject(new Error("Imaginea nu poate fi deschisă."));
-        image.onload = () => {
-          const maxSide = 1400;
-          const scale = Math.min(1, maxSide / Math.max(image.width,image.height));
-          const canvas = document.createElement("canvas");
-          canvas.width = Math.max(1,Math.round(image.width*scale));
-          canvas.height = Math.max(1,Math.round(image.height*scale));
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(image,0,0,canvas.width,canvas.height);
-          resolve(canvas.toDataURL("image/jpeg",0.78));
-        };
-        image.src = reader.result;
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-  async function handleFiles(input){
-    const files = Array.from(input.files || []);
-    input.value = "";
-    if(!files.length) return;
-    const available = 10 - selectedPhotos.length;
-    if(available <= 0){ alert("Ai atins limita de 10 fotografii."); return; }
-    if(files.length > available) alert("Poți adăuga încă " + available + " fotografie/fotografii. Restul au fost ignorate.");
-    for(const file of files.slice(0,available)){
-      try { selectedPhotos.push(await readImage(file)); }
-      catch(err){ alert(err.message || "Eroare la încărcarea fotografiei."); }
-    }
-    showPreview();
-  }
-  galleryInput.addEventListener("change", () => handleFiles(galleryInput));
-  cameraInput.addEventListener("change", () => handleFiles(cameraInput));
 
-  function resetForm(){
-    form.reset(); selectedPhotos=[]; editingId=null; showPreview();
-    $("formTitle").textContent="Adaugă un anunț";
-    $("saveBtn").textContent="Publică anunțul";
-    $("cancelEdit").hidden=true;
-  }
-  $("cancelEdit").addEventListener("click",resetForm);
-
-  form.addEventListener("submit", event => {
-    event.preventDefault();
-    const title = titleEl.value.trim();
-    if(!title){ alert("Completează titlul anunțului."); titleEl.focus(); return; }
-    const price = priceEl.value.trim();
-    const description = descEl.value.trim();
-    if(editingId){
-      const index = products.findIndex(p => p.id === editingId);
-      if(index >= 0){
-        products[index] = {...products[index],title,price,description,photos:selectedPhotos,updatedAt:new Date().toISOString()};
-      }
-    } else {
-      products.unshift({id:makeId(),title,price,description,photos:selectedPhotos,createdAt:new Date().toISOString()});
-    }
-    if(!saveProducts()) return;
-    resetForm(); render(); window.scrollTo({top:0,behavior:"smooth"});
+    item.append(img,remove);
+    preview.append(item);
   });
+}
 
-  function editProduct(id){
-    const p = products.find(x => x.id === id); if(!p) return;
-    editingId=id; titleEl.value=p.title||""; priceEl.value=p.price||"";
-    descEl.value=p.description||""; selectedPhotos=Array.isArray(p.photos)?[...p.photos]:[];
-    $("formTitle").textContent="Editează anunțul";
-    $("saveBtn").textContent="Salvează modificările";
-    $("cancelEdit").hidden=false; showPreview();
-    window.scrollTo({top:0,behavior:"smooth"});
-  }
-  function deleteProduct(id){
-    if(!confirm("Ștergi definitiv acest anunț?")) return;
-    products=products.filter(p=>p.id!==id);
-    if(editingId===id) resetForm();
-    saveProducts(); render();
-  }
-  function shareText(p){
-    return [p.title,p.price ? "Preț: "+p.price+" lei" : "",p.description||"", "Anunț publicat prin Vând Rapid"].filter(Boolean).join("\n");
-  }
-  async function shareProduct(p){
-    const text=shareText(p);
-    if(navigator.share){
-      try{
-        const files=[];
-        for(let i=0;i<(p.photos||[]).length;i++){
-          const response=await fetch(p.photos[i]);
-          const blob=await response.blob();
-          files.push(new File([blob],"vand-rapid-"+(i+1)+".jpg",{type:"image/jpeg"}));
-        }
-        if(files.length && navigator.canShare && navigator.canShare({files})){
-          await navigator.share({title:p.title,text,files});
-        } else {
-          await navigator.share({title:p.title,text});
-        }
-        return;
-      }catch(err){
-        if(err && err.name==="AbortError") return;
-      }
+function readImage(file){
+  return new Promise((resolve,reject)=>{
+    if(!file.type.startsWith("image/")){
+      return reject(new Error("Fișierul nu este o imagine."));
     }
+
+    const reader=new FileReader();
+
+    reader.onerror=()=>reject(new Error("Fotografia nu a putut fi citită."));
+
+    reader.onload=()=>{
+      const image=new Image();
+
+      image.onerror=()=>reject(new Error("Imaginea nu poate fi deschisă."));
+
+      image.onload=()=>{
+        const maxSide=1400;
+        const scale=Math.min(1,maxSide/Math.max(image.width,image.height));
+        const canvas=document.createElement("canvas");
+
+        canvas.width=Math.max(1,Math.round(image.width*scale));
+        canvas.height=Math.max(1,Math.round(image.height*scale));
+
+        const ctx=canvas.getContext("2d");
+        ctx.drawImage(image,0,0,canvas.width,canvas.height);
+
+        resolve(canvas.toDataURL("image/jpeg",0.78));
+      };
+
+      image.src=reader.result;
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleFiles(input){
+  const files=Array.from(input.files||[]);
+  input.value="";
+
+  if(!files.length)return;
+
+  const available=10-selectedPhotos.length;
+
+  if(available<=0){
+    alert("Ai atins limita de 10 fotografii.");
+    return;
+  }
+
+  if(files.length>available){
+    alert("Poți adăuga încă "+available+" fotografie/fotografii. Restul au fost ignorate.");
+  }
+
+  for(const file of files.slice(0,available)){
     try{
-      await navigator.clipboard.writeText(text);
-      alert("Textul anunțului a fost copiat. Îl poți lipi în aplicația dorită.");
-    }catch(e){ prompt("Copiază textul anunțului:",text); }
-  }
-  // Folosește meniul nativ Android pentru a trimite textul și fotografiile
-  // către aplicația aleasă. Site-urile sociale nu permit atașarea automată
-  // a fotografiilor printr-un simplu link web.
-  async function shareToApps(p){
-    const text=shareText(p);
-    if(navigator.share){
-      try{
-        const files=[];
-        for(let i=0;i<(p.photos||[]).length;i++){
-          const response=await fetch(p.photos[i]);
-          const blob=await response.blob();
-          files.push(new File([blob],"vand-rapid-"+(i+1)+".jpg",{type:"image/jpeg"}));
-        }
-        if(files.length && navigator.canShare && navigator.canShare({files})){
-          await navigator.share({title:p.title,text,files});
-        } else {
-          await navigator.share({title:p.title,text});
-        }
-        return;
-      }catch(err){
-        if(err && err.name==="AbortError") return;
-      }
+      selectedPhotos.push(await readImage(file));
+    }catch(err){
+      alert(err.message||"Eroare la încărcarea fotografiei.");
     }
-    await shareProduct(p);
   }
-  function shareWhatsApp(p){ shareToApps(p); }
-  function shareFacebook(p){ shareToApps(p); }
-  function shareTikTok(p){ shareToApps(p); }
 
-  function render(){
-    const query=$("search").value.trim().toLocaleLowerCase("ro");
-    const filtered=products.filter(p => [p.title,p.description,p.price].join(" ").toLocaleLowerCase("ro").includes(query));
-    list.innerHTML="";
-    if(!filtered.length){
-      const empty=document.createElement("div"); empty.className="empty";
-      empty.textContent=products.length ? "Nu am găsit anunțuri pentru această căutare." : "Nu ai anunțuri încă. Adaugă primul produs mai sus!";
-      list.append(empty); return;
+  showPreview();
+}
+
+galleryInput.addEventListener("change",()=>handleFiles(galleryInput));
+cameraInput.addEventListener("change",()=>handleFiles(cameraInput));
+
+function resetForm(){
+  form.reset();
+  selectedPhotos=[];
+  editingId=null;
+  showPreview();
+
+  $("formTitle").textContent="Adaugă un anunț";
+  $("saveBtn").textContent="Publică anunțul";
+  $("cancelEdit").hidden=true;
+}
+
+$("cancelEdit").addEventListener("click",resetForm);
+
+form.addEventListener("submit",event=>{
+  event.preventDefault();
+
+  const title=titleEl.value.trim();
+
+  if(!title){
+    alert("Completează titlul anunțului.");
+    titleEl.focus();
+    return;
+  }
+
+  const price=priceEl.value.trim();
+  const description=descEl.value.trim();
+
+  if(editingId){
+    const index=products.findIndex(p=>p.id===editingId);
+
+    if(index>=0){
+      products[index]={
+        ...products[index],
+        title,
+        price,
+        description,
+        photos:selectedPhotos,
+        updatedAt:new Date().toISOString()
+      };
     }
-    filtered.forEach(p=>{
-      const card=document.createElement("article"); card.className="product";
-      const photos=Array.isArray(p.photos)?p.photos:[];
-      const photoBox=document.createElement("div"); photoBox.className="product-photos";
-      if(photos.length){
-        photos.slice(0,6).forEach((src,i)=>{
-          const img=document.createElement("img"); img.src=src; img.alt="Fotografie "+(i+1); img.loading="lazy";
-          photoBox.append(img);
+  }else{
+    products.unshift({
+      id:makeId(),
+      title,
+      price,
+      description,
+      photos:selectedPhotos,
+      createdAt:new Date().toISOString()
+    });
+  }
+
+  if(!saveProducts())return;
+
+  resetForm();
+  render();
+  window.scrollTo({top:0,behavior:"smooth"});
+});
+
+function editProduct(id){
+  const p=products.find(x=>x.id===id);
+  if(!p)return;
+
+  editingId=id;
+  titleEl.value=p.title||"";
+  priceEl.value=p.price||"";
+  descEl.value=p.description||"";
+  selectedPhotos=Array.isArray(p.photos)?[...p.photos]:[];
+
+  $("formTitle").textContent="Editează anunțul";
+  $("saveBtn").textContent="Salvează modificările";
+  $("cancelEdit").hidden=false;
+
+  showPreview();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function deleteProduct(id){
+  if(!confirm("Ștergi definitiv acest anunț?"))return;
+
+  products=products.filter(p=>p.id!==id);
+
+  if(editingId===id)resetForm();
+
+  saveProducts();
+  render();
+}
+
+function shareText(p){
+  return [
+    p.title,
+    p.price ? "Preț: "+p.price+" lei" : "",
+    p.description||"",
+    "Anunț pregătit cu Vând Rapid"
+  ].filter(Boolean).join("\n");
+}
+
+// Distribuire prin meniul nativ Android
+async function shareToApps(p){
+  const text=shareText(p);
+
+  if(navigator.share){
+    try{
+      const files=[];
+
+      for(let i=0;i<(p.photos||[]).length;i++){
+        const response=await fetch(p.photos[i]);
+        const blob=await response.blob();
+
+        files.push(new File(
+          [blob],
+          "vand-rapid-"+(i+1)+".jpg",
+          {type:"image/jpeg"}
+        ));
+      }
+
+      if(files.length && navigator.canShare && navigator.canShare({files})){
+        await navigator.share({
+          title:p.title,
+          text,
+          files
         });
       }else{
-        const no=document.createElement("div"); no.className="empty"; no.textContent="Fără fotografii"; photoBox.append(no);
+        await navigator.share({title:p.title,text});
       }
-      const body=document.createElement("div"); body.className="product-body";
-      const h=document.createElement("h3"); h.textContent=p.title||"Anunț fără titlu";
-      const price=document.createElement("div"); price.className="price"; price.textContent=p.price ? p.price+" lei" : "Preț la cerere";
-      const description=document.createElement("div"); description.className="description"; description.textContent=p.description||"";
-      const meta=document.createElement("div"); meta.className="meta"; meta.textContent=photos.length+" fotografii";
-      const actions=document.createElement("div"); actions.className="actions";
-      const makeButton=(label,cls,fn)=>{const b=document.createElement("button");b.type="button";b.className=cls;b.textContent=label;b.addEventListener("click",fn);return b;};
-      actions.append(
-        makeButton("Editează","secondary",()=>editProduct(p.id)),
-        makeButton("Distribuie","primary",()=>shareToApps(p)),
-        makeButton("WhatsApp","secondary",()=>shareWhatsApp(p)),
-        makeButton("Facebook","secondary",()=>shareFacebook(p)),
-        makeButton("TikTok / Altele","secondary",()=>shareTikTok(p)),
-        makeButton("Șterge","danger",()=>deleteProduct(p.id))
-      );
-      body.append(h,price,description,meta,actions); card.append(photoBox,body); list.append(card);
-    });
+
+      return;
+    }catch(err){
+      if(err && err.name==="AbortError")return;
+    }
   }
-  $("search").addEventListener("input",render);
-  $("clearSearch").addEventListener("click",()=>{$("search").value="";render();});
+
+  try{
+    await navigator.clipboard.writeText(text);
+    alert("Textul anunțului a fost copiat. Îl poți lipi în aplicația dorită.");
+  }catch(e){
+    prompt("Copiază textul anunțului:",text);
+  }
+}
+
+// Facebook Marketplace
+async function marketplaceProduct(p){
+  const text=shareText(p);
+
+  // Deschide Marketplace imediat, pentru a evita blocarea ferestrei.
+  const marketplaceWindow=window.open(
+    "https://www.facebook.com/marketplace/create/item/",
+    "_blank"
+  );
+
+  // Copiază automat textul anunțului.
+  let copied=false;
+
+  try{
+    await navigator.clipboard.writeText(text);
+    copied=true;
+  }catch(e){
+    try{
+      const temp=document.createElement("textarea");
+      temp.value=text;
+      temp.style.position="fixed";
+      temp.style.opacity="0";
+      document.body.appendChild(temp);
+      temp.select();
+      copied=document.execCommand("copy");
+      temp.remove();
+    }catch(error){
+      copied=false;
+    }
+  }
+
+  if(!marketplaceWindow){
+    alert("Browserul a blocat deschiderea Marketplace. Permite ferestrele pop-up și încearcă din nou.");
+  }
+
+  if(copied){
+    alert(
+      "Anunțul este pregătit!\n\n"+
+      "1. În Marketplace, lipește textul copiat în descriere.\n"+
+      "2. Completează titlul și prețul.\n"+
+      "3. Atașează fotografiile din galerie.\n"+
+      "4. Verifică și apasă Publică.\n\n"+
+      "Fotografiile nu se încarcă automat în Marketplace."
+    );
+  }else{
+    prompt("Copiază textul anunțului:",text);
+  }
+}
+
+function shareWhatsApp(p){
+  shareToApps(p);
+}
+
+function shareFacebook(p){
+  shareToApps(p);
+}
+
+function shareTikTok(p){
+  shareToApps(p);
+}
+
+function render(){
+  const query=$("search").value.trim().toLocaleLowerCase("ro");
+
+  const filtered=products.filter(p=>
+    [p.title,p.description,p.price]
+      .join(" ")
+      .toLocaleLowerCase("ro")
+      .includes(query)
+  );
+
+  list.innerHTML="";
+
+  if(!filtered.length){
+    const empty=document.createElement("div");
+    empty.className="empty";
+    empty.textContent=products.length
+      ?"Nu am găsit anunțuri pentru această căutare."
+      :"Nu ai anunțuri încă. Adaugă primul produs mai sus!";
+
+    list.append(empty);
+    return;
+  }
+
+  filtered.forEach(p=>{
+    const card=document.createElement("article");
+    card.className="product";
+
+    const photos=Array.isArray(p.photos)?p.photos:[];
+
+    const photoBox=document.createElement("div");
+    photoBox.className="product-photos";
+
+    if(photos.length){
+      photos.slice(0,6).forEach((src,i)=>{
+        const img=document.createElement("img");
+        img.src=src;
+        img.alt="Fotografie "+(i+1);
+        img.loading="lazy";
+        photoBox.append(img);
+      });
+    }else{
+      const no=document.createElement("div");
+      no.className="empty";
+      no.textContent="Fără fotografii";
+      photoBox.append(no);
+    }
+
+    const body=document.createElement("div");
+    body.className="product-body";
+
+    const h=document.createElement("h3");
+    h.textContent=p.title||"Anunț fără titlu";
+
+    const price=document.createElement("div");
+    price.className="price";
+    price.textContent=p.price?p.price+" lei":"Preț la cerere";
+
+    const description=document.createElement("div");
+    description.className="description";
+    description.textContent=p.description||"";
+
+    const meta=document.createElement("div");
+    meta.className="meta";
+    meta.textContent=photos.length+" fotografii";
+
+    const actions=document.createElement("div");
+    actions.className="actions";
+
+    const makeButton=(label,cls,fn)=>{
+      const b=document.createElement("button");
+      b.type="button";
+      b.className=cls;
+      b.textContent=label;
+      b.addEventListener("click",fn);
+      return b;
+    };
+
+    actions.append(
+      makeButton("Editează","secondary",()=>editProduct(p.id)),
+      makeButton("Distribuie","primary",()=>shareToApps(p)),
+      makeButton("Marketplace","marketplace",()=>marketplaceProduct(p)),
+      makeButton("WhatsApp","secondary",()=>shareWhatsApp(p)),
+      makeButton("Facebook","secondary",()=>shareFacebook(p)),
+      makeButton("TikTok / Altele","secondary",()=>shareTikTok(p)),
+      makeButton("Șterge","danger",()=>deleteProduct(p.id))
+    );
+
+    body.append(h,price,description,meta,actions);
+    card.append(photoBox,body);
+    list.append(card);
+  });
+}
+
+$("search").addEventListener("input",render);
+
+$("clearSearch").addEventListener("click",()=>{
+  $("search").value="";
   render();
+});
+
+render();
+
 })();
 </script>
 </body>
