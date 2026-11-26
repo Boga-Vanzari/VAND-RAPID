@@ -307,7 +307,18 @@ footer{text-align:center;padding:12px 10px 24px;color:var(--muted);font-size:11p
         makeButton("Distribuie","primary",()=>shareToApps(p)),
         makeButton("WhatsApp","secondary",()=>shareWhatsApp(p)),
         makeButton("Facebook","secondary",()=>shareFacebook(p)),
+        makeButton("Marketplace","secondary",()=>shareMarketplace(p)),
         makeButton("TikTok / Altele","secondary",()=>shareTikTok(p)),
+        async function shareMarketplace(p){
+  const text=shareText(p);
+  try{
+    await navigator.clipboard.writeText(text);
+    alert("Textul anunțului a fost copiat. Lipește-l în Marketplace și adaugă fotografiile.");
+  }catch(e){
+    prompt("Copiază textul anunțului:",text);
+  }
+  window.open("https://www.facebook.com/marketplace/create/item/","_blank","noopener");
+        }
         makeButton("Șterge","danger",()=>deleteProduct(p.id))
       );
       body.append(h,price,description,meta,actions); card.append(photoBox,body); list.append(card);
