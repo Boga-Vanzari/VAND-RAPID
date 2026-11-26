@@ -245,15 +245,34 @@ footer{text-align:center;padding:12px 10px 24px;color:var(--muted);font-size:11p
       alert("Textul anunțului a fost copiat. Îl poți lipi în aplicația dorită.");
     }catch(e){ prompt("Copiază textul anunțului:",text); }
   }
-  function shareWhatsApp(p){
-    const url="https://wa.me/?text="+encodeURIComponent(shareText(p));
-    window.open(url,"_blank","noopener");
+  // Folosește meniul nativ Android pentru a trimite textul și fotografiile
+  // către aplicația aleasă. Site-urile sociale nu permit atașarea automată
+  // a fotografiilor printr-un simplu link web.
+  async function shareToApps(p){
+    const text=shareText(p);
+    if(navigator.share){
+      try{
+        const files=[];
+        for(let i=0;i<(p.photos||[]).length;i++){
+          const response=await fetch(p.photos[i]);
+          const blob=await response.blob();
+          files.push(new File([blob],"vand-rapid-"+(i+1)+".jpg",{type:"image/jpeg"}));
+        }
+        if(files.length && navigator.canShare && navigator.canShare({files})){
+          await navigator.share({title:p.title,text,files});
+        } else {
+          await navigator.share({title:p.title,text});
+        }
+        return;
+      }catch(err){
+        if(err && err.name==="AbortError") return;
+      }
+    }
+    await shareProduct(p);
   }
-  function shareFacebook(p){
-    const url="https://www.facebook.com/sharer/sharer.php?u="+encodeURIComponent(location.href)+"&quote="+encodeURIComponent(shareText(p));
-    window.open(url,"_blank","noopener");
-  }
-  function shareTikTok(p){ shareProduct(p); }
+  function shareWhatsApp(p){ shareToApps(p); }
+  function shareFacebook(p){ shareToApps(p); }
+  function shareTikTok(p){ shareToApps(p); }
 
   function render(){
     const query=$("search").value.trim().toLocaleLowerCase("ro");
@@ -285,7 +304,7 @@ footer{text-align:center;padding:12px 10px 24px;color:var(--muted);font-size:11p
       const makeButton=(label,cls,fn)=>{const b=document.createElement("button");b.type="button";b.className=cls;b.textContent=label;b.addEventListener("click",fn);return b;};
       actions.append(
         makeButton("Editează","secondary",()=>editProduct(p.id)),
-        makeButton("Distribuie","primary",()=>shareProduct(p)),
+        makeButton("Distribuie","primary",()=>shareToApps(p)),
         makeButton("WhatsApp","secondary",()=>shareWhatsApp(p)),
         makeButton("Facebook","secondary",()=>shareFacebook(p)),
         makeButton("TikTok / Altele","secondary",()=>shareTikTok(p)),
